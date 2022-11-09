@@ -22,6 +22,7 @@ export default async function (context, req) {
         const blockBlob = container.getBlockBlobClient(fileName)
 
         const response = await blockBlob.upload(file.data, file.data.length)
+        context.log('[blob res]', response)
         return {
             status: 200,
             url: blockBlob.url,
