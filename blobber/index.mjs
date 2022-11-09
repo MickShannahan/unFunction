@@ -24,7 +24,7 @@ export default async function (context, req) {
         const response = await blockBlob.upload(file.data, file.data.length)
         return {
             status: 200,
-            url: 'worked'
+            url: blockBlob.url
         }
     } catch (error) {
         return {
