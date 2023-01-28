@@ -3,19 +3,20 @@ import { encode } from "blurhash";
 import multipart from 'parse-multipart'
 import sharp from "sharp";
 export default async function (context, req) {
-    const blobStorage = BlobServiceClient.fromConnectionString(process.env.AZURE_BLOB_CONNECTION)
     context.log('Uploading to blob: ', req.query.container);
+    const blobStorage = BlobServiceClient.fromConnectionString(process.env.AZURE_BLOB_CONNECTION)
     try {
         console.log(process.env.AZURE_BLOB_CONNECTION);
         if (!req.query.container) throw new Error('no container specified, specify in query')
         if (!req.query.fileName) throw new Error('no fileName specified, specify in query')
 
         const compressRate = req.query.compress || 80
-        const shrinkAmmount = req.query.shrink || 0.5
+        const shrinkAmount = req.query.shrink || 0.5
 
         const containerName = req.query.container
         const fileName = req.query.fileName.slice(0, req.query.fileName.indexOf('.'))
         const fileExtension = req.query.fileName.slice(req.query.fileName.indexOf('.'))
+        const fileType = fileExtension.slice(1)
         // parse multipart
         const bodyBuffer = Buffer.from(req.body);
         const boundary = multipart.getBoundary(req.headers["content-type"]);
@@ -32,7 +33,7 @@ export default async function (context, req) {
                 fileWidth = width
                 fileHeight = height
                 return sharp(buffer)
-                    .resize(Math.round(width * shrinkAmmount))
+                    .resize(Math.round(width * shrinkAmount))
                     .jpeg({ quality: compressRate, chromaSubsampling: '4:4:4' })
                     .toBuffer()
             }
@@ -41,13 +42,15 @@ export default async function (context, req) {
 
         const blockBlob = container.getBlockBlobClient(fileName + fileExtension)
         const compBlockBlob = container.getBlockBlobClient('mini_' + fileName + '.jpg')
+        const blobtions = { blobHTTPHeaders: { blobContentType: 'image/' + fileType, blobCacheControl: 'max-age=36000' } }
 
-        const response = await blockBlob.upload(file.data, file.data.length)
-        const compRes = await compBlockBlob.upload(scaleByHalf, scaleByHalf.length)
+        const response = await blockBlob.upload(file.data, file.data.length, blobtions)
+        const compRes = await compBlockBlob.upload(scaleByHalf, scaleByHalf.length, blobtions)
 
 
         context.log('[blob res]', response)
         const body = {
+            fileName: fileName,
             url: blockBlob.url,
             smallUrl: compBlockBlob.url,
             height: fileHeight,
