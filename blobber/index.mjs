@@ -14,9 +14,9 @@ export default async function (context, req) {
         const shrinkAmount = req.query.shrink || 0.5
 
         const containerName = req.query.container
+        const folder = req.query.folder ? req.query.folder + '/' : ''
         const fileName = req.query.fileName.slice(0, req.query.fileName.indexOf('.'))
         const fileExtension = req.query.fileName.slice(req.query.fileName.indexOf('.'))
-        const fileType = fileExtension.slice(1)
         // parse multipart
         const bodyBuffer = Buffer.from(req.body);
         const boundary = multipart.getBoundary(req.headers["content-type"]);
@@ -24,6 +24,8 @@ export default async function (context, req) {
 
         if (parts.length <= 0) throw new Error('no File attached')
         const file = parts[0]
+        const fileType = file.type.replace(/(.*)\//g, '')
+
         let fileWidth, fileHeight
         const buffer = Buffer.from(file.data)
         // compress
@@ -40,8 +42,8 @@ export default async function (context, req) {
             );
         const container = blobStorage.getContainerClient(containerName)
 
-        const blockBlob = container.getBlockBlobClient(fileName + fileExtension)
-        const compBlockBlob = container.getBlockBlobClient('mini_' + fileName + '.jpg')
+        const blockBlob = container.getBlockBlobClient(folder + fileName + `.${fileType}`)
+        const compBlockBlob = container.getBlockBlobClient(folder + 'mini_' + fileName + '.jpg')
         const blobtions = { blobHTTPHeaders: { blobContentType: 'image/' + fileType, blobCacheControl: 'max-age=36000' } }
 
         const response = await blockBlob.upload(file.data, file.data.length, blobtions)
